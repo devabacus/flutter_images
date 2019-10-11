@@ -1,12 +1,17 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:face_try/image_picker.dart';
 import 'package:firebase_ml_vision/firebase_ml_vision.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as Img;
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_picker_saver/image_picker_saver.dart' as prefix0;
 import 'package:toast/toast.dart';
+
+
+
 
 void main() => runApp(
       MaterialApp(
@@ -15,10 +20,10 @@ void main() => runApp(
           primarySwatch: Colors.blue,
         ),
 //        home: FacePage(),
-//        home: CropImage(
+        home: MyHomePage()
 //          title: 'testc crop',
 //        ),
-        home: MyCropImage(),
+//        home: ImageCrop(),
       ),
     );
 
@@ -89,10 +94,12 @@ class _FacePageState extends State<FacePage> {
 
 class FacePainter extends CustomPainter {
   final ui.Image image;
+
   final List<Face> faces;
   final List<Rect> rects = [];
 
   FacePainter(this.image, this.faces) {
+
     for (var i = 0; i < faces.length; i++) {
       rects.add(faces[i].boundingBox);
       print(faces[i].boundingBox);
@@ -111,6 +118,7 @@ class FacePainter extends CustomPainter {
       canvas.drawRect(rects[i], paint);
     }
     canvas.drawRect(Rect.fromLTRB(300.0, 200.0, 900.0, 800), paint);
+
   }
 
   @override
@@ -119,104 +127,26 @@ class FacePainter extends CustomPainter {
   }
 }
 
-class CropImage extends StatefulWidget {
-  String title;
+class ImageCrop extends StatelessWidget {
 
-  CropImage({this.title});
 
-  @override
-  _CropImageState createState() => _CropImageState();
-}
-
-enum AppState { free, picked, cropped }
-
-class _CropImageState extends State<CropImage> {
-  AppState state;
-  File imageFile;
-
-  @override
-  void initState() {
-    state = AppState.free;
-  }
 
   @override
   Widget build(BuildContext context) {
+
+    Image photo = Image.asset('assets/images/test_image.jpg');
+//    Img.copyCrop(photo, 100, 80, 150, 150);
+//    Img.Image image = Img.decodeJpg(File('test.jpg').readAsBytesSync());
+
+//    final imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.save),
-            onPressed: _savedImage,
-          )
-        ],
-      ),
-      body: Center(
-        child: imageFile != null ? Image.file(imageFile) : Container(),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (state == AppState.free)
-            _pickImage();
-          else if (state == AppState.picked)
-            _cropImage();
-          else if (state == AppState.cropped) _clearImage();
-        },
-        child: _buildButtonIcon(),
+      appBar: AppBar(title: Text('imageTest'),),
+      body: Container(
+//        child: FutureBuilder(
+////            future: ,
+//        ),
       ),
     );
-  }
-
-  Future<Null> _savedImage() async {
-    if (imageFile != null) {
-      var filePath = await prefix0.ImagePickerSaver.saveFile(
-          fileData: imageFile.readAsBytesSync());
-      var savedFile = File.fromUri(Uri.file(filePath));
-      File saved = await Future<File>.sync(() => savedFile);
-      setState(() {
-        imageFile = saved;
-      });
-
-      Toast.show("save success", context);
-    }
-  }
-
-  Widget _buildButtonIcon() {
-    if (state == AppState.free)
-      return Icon(Icons.add);
-    else if (state == AppState.picked)
-      return Icon(Icons.crop);
-    else if (state == AppState.cropped) return Icon(Icons.clear);
-  }
-
-  Future<Null> _pickImage() async {
-    imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
-    if (imageFile != null) {
-      setState(() {
-        state = AppState.picked;
-        print('picked photo');
-      });
-    }
-  }
-
-  Future<Null> _cropImage() async {
-    File croppedImage = await ImageCropper.cropImage(
-      sourcePath: imageFile.path,
-    );
-    if (croppedImage != null) {
-      imageFile = croppedImage;
-      setState(() {
-        state = AppState.cropped;
-      });
-    }
-  }
-
-  void _clearImage() {
-    imageFile = null;
-    setState(() {
-      state = AppState.free;
-    });
   }
 }
-
-
