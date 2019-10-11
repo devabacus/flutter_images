@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
 import 'package:firebase_ml_vision/firebase_ml_vision.dart';
+import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_saver/image_picker_saver.dart' as prefix0;
+import 'package:toast/toast.dart';
 
 void main() => runApp(
       MaterialApp(
@@ -11,7 +14,11 @@ void main() => runApp(
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: FacePage(),
+//        home: FacePage(),
+//        home: CropImage(
+//          title: 'testc crop',
+//        ),
+        home: MyCropImage(),
       ),
     );
 
@@ -88,6 +95,7 @@ class FacePainter extends CustomPainter {
   FacePainter(this.image, this.faces) {
     for (var i = 0; i < faces.length; i++) {
       rects.add(faces[i].boundingBox);
+      print(faces[i].boundingBox);
     }
   }
 
@@ -95,13 +103,14 @@ class FacePainter extends CustomPainter {
   void paint(ui.Canvas canvas, ui.Size size) {
     final Paint paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 15.0
+      ..strokeWidth = 3.0
       ..color = Colors.yellow;
 
     canvas.drawImage(image, Offset.zero, Paint());
     for (var i = 0; i < faces.length; i++) {
       canvas.drawRect(rects[i], paint);
     }
+    canvas.drawRect(Rect.fromLTRB(300.0, 200.0, 900.0, 800), paint);
   }
 
   @override
@@ -109,3 +118,105 @@ class FacePainter extends CustomPainter {
     return image != oldDelegate.image || faces != oldDelegate.faces;
   }
 }
+
+class CropImage extends StatefulWidget {
+  String title;
+
+  CropImage({this.title});
+
+  @override
+  _CropImageState createState() => _CropImageState();
+}
+
+enum AppState { free, picked, cropped }
+
+class _CropImageState extends State<CropImage> {
+  AppState state;
+  File imageFile;
+
+  @override
+  void initState() {
+    state = AppState.free;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.save),
+            onPressed: _savedImage,
+          )
+        ],
+      ),
+      body: Center(
+        child: imageFile != null ? Image.file(imageFile) : Container(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          if (state == AppState.free)
+            _pickImage();
+          else if (state == AppState.picked)
+            _cropImage();
+          else if (state == AppState.cropped) _clearImage();
+        },
+        child: _buildButtonIcon(),
+      ),
+    );
+  }
+
+  Future<Null> _savedImage() async {
+    if (imageFile != null) {
+      var filePath = await prefix0.ImagePickerSaver.saveFile(
+          fileData: imageFile.readAsBytesSync());
+      var savedFile = File.fromUri(Uri.file(filePath));
+      File saved = await Future<File>.sync(() => savedFile);
+      setState(() {
+        imageFile = saved;
+      });
+
+      Toast.show("save success", context);
+    }
+  }
+
+  Widget _buildButtonIcon() {
+    if (state == AppState.free)
+      return Icon(Icons.add);
+    else if (state == AppState.picked)
+      return Icon(Icons.crop);
+    else if (state == AppState.cropped) return Icon(Icons.clear);
+  }
+
+  Future<Null> _pickImage() async {
+    imageFile = await ImagePicker.pickImage(source: ImageSource.gallery);
+    if (imageFile != null) {
+      setState(() {
+        state = AppState.picked;
+        print('picked photo');
+      });
+    }
+  }
+
+  Future<Null> _cropImage() async {
+    File croppedImage = await ImageCropper.cropImage(
+      sourcePath: imageFile.path,
+    );
+    if (croppedImage != null) {
+      imageFile = croppedImage;
+      setState(() {
+        state = AppState.cropped;
+      });
+    }
+  }
+
+  void _clearImage() {
+    imageFile = null;
+    setState(() {
+      state = AppState.free;
+    });
+  }
+}
+
+
